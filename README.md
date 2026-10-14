@@ -79,11 +79,13 @@ Spotify, Chrome, Edge, Firefox, Brave, VLC, iTunes, Tidal, the Media Player app 
    node "%~dp0index.js"
    ```
    Run it while Discord is open. To autostart: press Win+R → `shell:startup` → put a shortcut to `start.bat` there.
-5. Toggle on/off: double-click `toggle.bat` (applies within 2s — no signal plumbing on Windows)
+5. Toggle on/off: double-click `toggle.bat` (the script watches the off-file, so it applies instantly)
 
-Windows differences: no cover art (SMTC gives art as an opaque stream, not a URL Discord can proxy),
-no YouTube/Netflix titles or thumbnails (needs the browser tab URL, which SMTC doesn't expose),
-and `netflix-map.json` is unused there. Linux shows those extras.
+Windows differences: cover art falls back to the uploaded player asset (a real cover isn't possible —
+SMTC gives art as an opaque stream, not a URL Discord can proxy), no YouTube titles or thumbnails
+(needs the browser tab URL, which SMTC doesn't expose), and `netflix-map.json` is unused there.
+Apps with no timeline (e.g. the Netflix Store app) show title/artist without a progress bar.
+Linux shows those extras.
 
 ## Netflix
 

@@ -41,15 +41,22 @@ while ($true) {
             try {
                 $p = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
                 if ($p.Title) {
-                    $t = $s.GetTimelineProperties()
+                    # some apps (netflix store app, etc.) have media props but no timeline —
+                    # degrade to position/length -1 (no progress bar) instead of dropping the session
+                    $pos = -1; $len = -1
+                    try {
+                        $t = $s.GetTimelineProperties()
+                        $pos = [math]::Round($t.Position.TotalSeconds, 3)
+                        $len = [math]::Round($t.EndTime.TotalSeconds, 3)
+                    } catch {}
                     [ordered]@{
                         app      = AppName $s.SourceAppUserModelId
                         title    = $p.Title
                         artist   = $p.Artist
                         album    = $p.AlbumName
                         status   = $s.GetPlaybackInfo().PlaybackStatus.ToString()
-                        position = [math]::Round($t.Position.TotalSeconds, 3)
-                        length   = [math]::Round($t.EndTime.TotalSeconds, 3)
+                        position = $pos
+                        length   = $len
                     }
                 }
             } catch {}

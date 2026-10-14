@@ -2,7 +2,7 @@
 // discord-rpc quirks this works around before touching the logic below
 import { Client } from "@xhayper/discord-rpc";
 import { execFile, spawn } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, watchFile } from "node:fs";
 import { homedir } from "node:os";
 import readline from "node:readline";
 import { promisify } from "node:util";
@@ -237,6 +237,10 @@ async function tick() {
           if (nfInfo?.art) activity.assets.large_image = nfInfo.art;
           else activity.assets.large_image = "netflix"; // uploaded logo asset as fallback
         } else if (t.artUrl?.startsWith("http")) activity.assets.large_image = t.artUrl; // file:// art unreachable by discord's cloud proxy
+        else if (isWin)
+          // smtc exposes no public art url — fall back to the uploaded player asset
+          // (missing assets silently don't render, so an unuploaded name is harmless)
+          activity.assets.large_image = t.player.toLowerCase();
         if (t.album) activity.assets.large_text = `album: ${t.album}`;
         // small icon per player: upload assets named exactly like the key
         // (e.g. "spotify", "firefox", "youtube", "netflix"); missing ones just don't render
@@ -336,8 +340,15 @@ else {
   startFollow();
 }
 
+// toggle (off-file) refreshes instantly on every platform instead of waiting for the next sweep —
+// this is what makes toggle.bat feel instant on windows, where there's no SIGUSR2
+watchFile(OFF_FILE, { interval: 1000 }, () => {
+  for (const c of clients) c.lastKey = ""; // force re-set everywhere
+  tick();
+});
+
 // toggle pokes us to refresh instantly instead of waiting for the next poll (linux only; the
-// windows toggle just touches the off-file, which the 2s sweep picks up anyway)
+// windows toggle just touches the off-file, which the watcher above picks up)
 if (!isWin)
   process.on("SIGUSR2", () => {
     for (const c of clients) c.lastKey = ""; // force re-set everywhere
