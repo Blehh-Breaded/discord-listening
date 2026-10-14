@@ -2,6 +2,8 @@
 
 Shows what you're listening/watching on Discord (and Equibop) — no usernames shared anywhere.
 Track title, artist, album, cover art, platform badge, and a progress bar synced to the player.
+Works with any MPRIS player on Linux (Spotify, Firefox, LibreWolf, mpv, VLC, …) — browsers report
+via their media session, and plasma-browser-integration gives live tab URLs for YouTube/Netflix.
 
 ## How it works (one paragraph)
 

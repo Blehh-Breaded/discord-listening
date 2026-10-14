@@ -25,6 +25,7 @@ const PLATFORM_NAMES = {
   spotify: "Spotify",
   spotifast: "Spotify",
   firefox: "Firefox",
+  librewolf: "LibreWolf",
   chromium: "Chromium",
   brave: "Brave",
   mpv: "mpv",

@@ -23,6 +23,7 @@ function AppName($aumid) {
     switch -Regex ($aumid) {
         "spotify" { "spotify"; break }
         "firefox" { "firefox"; break }
+        "librewolf" { "librewolf"; break }
         "msedge"  { "msedge"; break }
         "chrome"  { "chrome"; break }
         "brave"   { "brave"; break }
