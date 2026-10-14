@@ -8,10 +8,12 @@ import readline from "node:readline";
 import { promisify } from "node:util";
 import path from "node:path";
 
-const OFF_FILE = `${homedir()}/.cache/discord-listening-off`;
-const HIDE_FILE = `${homedir()}/discord-listening/hide.txt`;
-const NETFLIX_MAP = `${homedir()}/discord-listening/netflix-map.json`;
-const SOCKET_DIR = process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid()}`;
+const isWin = process.platform === "win32";
+const OFF_FILE = `${homedir()}/.discord-listening-off`;
+const HIDE_FILE = path.join(homedir(), "discord-listening", "hide.txt");
+const NETFLIX_MAP = path.join(homedir(), "discord-listening", "netflix-map.json");
+// discord ipc: unix sockets under XDG_RUNTIME_DIR on linux, named pipes on windows
+const SOCKET_DIR = isWin ? "\\\\.\\pipe\\" : process.env.XDG_RUNTIME_DIR || `/run/user/${process.getuid()}`;
 
 const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 if (!CLIENT_ID) {
@@ -29,6 +31,11 @@ const PLATFORM_NAMES = {
   vlc: "VLC",
   celluloid: "Celluloid",
   strawberry: "Strawberry",
+  chrome: "Chrome",
+  msedge: "Microsoft Edge",
+  zunemusic: "Media Player",
+  itunes: "iTunes",
+  tidal: "Tidal",
 };
 
 const run = promisify(execFile);
@@ -65,26 +72,33 @@ async function ytThumb(id) {
 }
 
 async function currentTrack(prevPlayer) {
-  let stdout;
-  try {
-    ({ stdout } = await run("playerctl", [
-      "-a",
-      "metadata",
-      "--format",
-      "{{playerName}}|{{title}}|{{artist}}|{{status}}|{{mpris:length}}|{{xesam:url}}|{{mpris:artUrl}}|{{xesam:album}}",
-    ]));
-  } catch {
-    return null; // no players
+  let players;
+  if (isWin) {
+    // smtc-poll.ps1 keeps `smtc` updated (one normalized snapshot per change)
+    players = smtc.filter((p) => p.title);
+    if (!players.length) return null;
+  } else {
+    let stdout;
+    try {
+      ({ stdout } = await run("playerctl", [
+        "-a",
+        "metadata",
+        "--format",
+        "{{playerName}}|{{title}}|{{artist}}|{{status}}|{{mpris:length}}|{{xesam:url}}|{{mpris:artUrl}}|{{xesam:album}}",
+      ]));
+    } catch {
+      return null; // no players
+    }
+    players = stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [player, title, artist, status, lengthUs, url, artUrl, album] = line.split("|");
+        return { player, title, artist, status, lengthUs: parseFloat(lengthUs), url, artUrl, album };
+      })
+      .filter((p) => p.title);
   }
-  const players = stdout
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => {
-      const [player, title, artist, status, lengthUs, url, artUrl, album] = line.split("|");
-      return { player, title, artist, status, lengthUs: parseFloat(lengthUs), url, artUrl, album };
-    })
-    .filter((p) => p.title);
   if (!players.length) return null;
   // drop hidden players (hide.txt, one name per line)
   let hide = [];
@@ -110,9 +124,13 @@ async function currentTrack(prevPlayer) {
     candidates.find((p) => p.player === "plasma-browser-integration") ??
     candidates[0];
   let position = NaN;
-  try {
-    position = parseFloat((await run("playerctl", ["--player", pick.player, "position"])).stdout.trim());
-  } catch {}
+  if (isWin) {
+    position = pick.position; // smtc snapshot includes it
+  } else {
+    try {
+      position = parseFloat((await run("playerctl", ["--player", pick.player, "position"])).stdout.trim());
+    } catch {}
+  }
   return { ...pick, position };
 }
 
@@ -143,7 +161,7 @@ function buildClients() {
     lastKey: undefined, // undefined = must set on next tick (fresh/reconnected client)
     rpc: new Client({
       clientId: CLIENT_ID,
-      transport: { type: "ipc", pathList: [{ platform: ["linux"], format: () => p }] },
+      transport: { type: "ipc", pathList: [{ platform: [process.platform], format: () => p }] },
     }),
   }));
   console.log("watching sockets:", paths.map((p) => path.basename(p)).join(" "));
@@ -265,25 +283,63 @@ async function tick() {
 tick();
 setInterval(tick, 2_000); // spotify skips don't emit mpris change events, so poll for track changes; SETs only fire on change, so no rate-limit risk
 
-// instant reaction: playerctl --follow emits an event the moment any player changes state
-function startFollow() {
-  const child = spawn("playerctl", [
-    "-a",
-    "metadata",
-    "--follow",
-    "--format",
-    "{{playerName}}|{{status}}",
+// windows: smtc-poll.ps1 is both the poll and the instant event source (emits per change)
+let smtc = []; // latest ps snapshot, normalized to the same shape as the playerctl parse
+function startSmtc() {
+  const child = spawn("powershell", [
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    path.join(import.meta.dirname, "smtc-poll.ps1"),
   ]);
   child.stderr.resume(); // drain
   readline
     .createInterface({ input: child.stdout })
-    .on("line", (line) => line.trim() && tick());
-  child.on("exit", () => setTimeout(startFollow, 1000)); // died -> respawn
+    .on("line", (line) => {
+      if (!line.trim()) return;
+      try {
+        smtc = JSON.parse(line).map((s) => ({
+          player: s.app,
+          title: s.title,
+          artist: s.artist,
+          status: s.status,
+          lengthUs: s.length * 1e6, // smtc seconds -> mpris microseconds, same as the linux parse
+          url: null, // smtc exposes no tab url: no youtube/netflix handling on windows
+          artUrl: null, // smtc art is a stream, not a public url discord can proxy
+          album: s.album,
+          position: s.position,
+        }));
+      } catch {}
+      tick();
+    });
+  child.on("exit", () => setTimeout(startSmtc, 1000)); // died -> respawn
 }
-startFollow();
 
-// toggle pokes us to refresh instantly instead of waiting for the next poll
-process.on("SIGUSR2", () => {
-  for (const c of clients) c.lastKey = ""; // force re-set everywhere
-  tick();
-});
+if (isWin) startSmtc();
+else {
+  // instant reaction: playerctl --follow emits an event the moment any player changes state
+  function startFollow() {
+    const child = spawn("playerctl", [
+      "-a",
+      "metadata",
+      "--follow",
+      "--format",
+      "{{playerName}}|{{status}}",
+    ]);
+    child.stderr.resume(); // drain
+    readline
+      .createInterface({ input: child.stdout })
+      .on("line", (line) => line.trim() && tick());
+    child.on("exit", () => setTimeout(startFollow, 1000)); // died -> respawn
+  }
+  startFollow();
+}
+
+// toggle pokes us to refresh instantly instead of waiting for the next poll (linux only; the
+// windows toggle just touches the off-file, which the 2s sweep picks up anyway)
+if (!isWin)
+  process.on("SIGUSR2", () => {
+    for (const c of clients) c.lastKey = ""; // force re-set everywhere
+    tick();
+  });

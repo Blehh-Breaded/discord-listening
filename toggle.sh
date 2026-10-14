@@ -1,5 +1,5 @@
 #!/bin/sh
-f="$HOME/.cache/discord-listening-off"
+f="$HOME/.discord-listening-off"
 if [ -f "$f" ]; then
   rm "$f"
   echo "listening presence ON"

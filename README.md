@@ -16,9 +16,11 @@ on change, so rate limits are never an issue.
 | file | purpose |
 |---|---|
 | `index.js` | the whole script (single file) |
-| `toggle.sh` | instantly toggles the presence on/off (bind to a KDE shortcut) |
-| `hide.txt` | player names to hide, one per line (`playerctl -l` shows names) |
-| `netflix-map.json` | netflix watch-ID → show title/art (DRM hides it otherwise) |
+| `toggle.sh` | instantly toggles the presence on/off (bind to a KDE shortcut) — linux |
+| `toggle.bat` | same for Windows (applies within 2s) |
+| `smtc-poll.ps1` | Windows-only helper: PowerShell reading Windows' SMTC media sessions (replaces playerctl) |
+| `hide.txt` | player names to hide, one per line (`playerctl -l` on linux; SMTC app names on Windows, e.g. `spotify`, `chrome`) |
+| `netflix-map.json` | netflix watch-ID → show title/art (DRM hides it otherwise) — linux only (needs the tab URL) |
 | `package.json` | deps: @xhayper/discord-rpc |
 
 ## Commands
@@ -59,6 +61,29 @@ playerctl -p spotify next
    `spotify`, `firefox`, `youtube`, `netflix` (square PNG, ≥512×512).
    **After uploading assets, restart the Discord client — it caches them.**
 5. KDE shortcut → command: `/home/cornbread/discord-listening/toggle.sh`
+
+## Windows setup
+
+Works on both platforms from the same script — on Windows it reads players from **SMTC**
+(System Media Transport Controls, built into Windows) via `smtc-poll.ps1` instead of playerctl.
+Spotify, Chrome, Edge, Firefox, Brave, VLC, iTunes, Tidal, the Media Player app all report to SMTC.
+
+1. Install [Node.js](https://nodejs.org), clone this repo to `%USERPROFILE%\discord-listening`, then `npm install` in it
+2. Create an app at https://discord.com/developers/applications → copy the **Application ID**
+3. Upload Rich Presence Art Assets, named exactly like the app: `spotify`, `chrome`, `msedge`, …
+   (square PNG, ≥512×512) — these are the little player badges. Restart the Discord client after uploading.
+4. Create `start.bat` next to `index.js`:
+   ```bat
+   @echo off
+   set DISCORD_CLIENT_ID=<your app id>
+   node "%~dp0index.js"
+   ```
+   Run it while Discord is open. To autostart: press Win+R → `shell:startup` → put a shortcut to `start.bat` there.
+5. Toggle on/off: double-click `toggle.bat` (applies within 2s — no signal plumbing on Windows)
+
+Windows differences: no cover art (SMTC gives art as an opaque stream, not a URL Discord can proxy),
+no YouTube/Netflix titles or thumbnails (needs the browser tab URL, which SMTC doesn't expose),
+and `netflix-map.json` is unused there. Linux shows those extras.
 
 ## Netflix
 
