@@ -120,5 +120,8 @@ so the show name/art come from `netflix-map.json`, one entry per watch-ID:
 - **New dev-portal assets need a Discord client restart** to show up.
 - **`file://` artwork** (plasma browser integration) can't be used — Discord's cloud proxy can't
   reach your disk. YouTube is solved via public `i.ytimg.com` thumbnails (16:9 variants preferred).
+- **Discord square-crops cover art** — 16:9 thumbnails lose their sides, so all art URLs are padded
+  to a 512×512 square via `wsrv.nl?fit=contain` (black bars, nothing cut off). If wsrv.nl is down,
+  art just doesn't render — everything else keeps working.
 - Player picking: playing beats paused; sticky (the shown player stays until it pauses) so
   firefox/plasma tabs don't fight.

@@ -54,7 +54,13 @@ function netflixInfo(id) {
   }
 }
 
-// prefer 16:9 thumbnail variants (no letterbox bars) — discord square-crops the large image
+// discord square-crops large images — pad via wsrv.nl's fit=contain so nothing is cut off
+// (public proxy, so discord's cloud can fetch it; black padding blends with dark themes)
+function squareArt(url) {
+  return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=512&h=512&fit=contain&cbg=000000`;
+}
+
+// prefer 16:9 thumbnail variants (hqdefault bakes in 4:3 letterbox bars; clean 16:9 + squareArt
 const ytThumbCache = new Map();
 async function ytThumb(id) {
   if (ytThumbCache.has(id)) return ytThumbCache.get(id);
@@ -233,11 +239,11 @@ async function tick() {
         const nfInfo = nf ? netflixInfo(nf[1]) : null;
         if (nfInfo?.title) activity.details = nfInfo.title;
         if (nfInfo?.subtitle) activity.state = nfInfo.subtitle;
-        if (yt) activity.assets.large_image = await ytThumb(yt[1]);
+        if (yt) activity.assets.large_image = squareArt(await ytThumb(yt[1]));
         else if (nf) {
-          if (nfInfo?.art) activity.assets.large_image = nfInfo.art;
+          if (nfInfo?.art) activity.assets.large_image = squareArt(nfInfo.art);
           else activity.assets.large_image = "netflix"; // uploaded logo asset as fallback
-        } else if (t.artUrl?.startsWith("http")) activity.assets.large_image = t.artUrl; // file:// art unreachable by discord's cloud proxy
+        } else if (t.artUrl?.startsWith("http")) activity.assets.large_image = squareArt(t.artUrl); // file:// art unreachable by discord's cloud proxy
         else if (isWin)
           // smtc exposes no public art url — fall back to the uploaded player asset
           // (missing assets silently don't render, so an unuploaded name is harmless)
