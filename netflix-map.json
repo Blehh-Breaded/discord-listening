@@ -1,0 +1,23 @@
+{
+  "_howto": "One entry per netflix show/episode id (the number in netflix.com/watch/<ID>). title = show name shown on your presence, subtitle = optional second line, art = any public image URL (copy from netflix: right-click poster -> copy image address, or use any public art). Edits apply instantly, no restart.",
+  "80179831": {
+    "title": "JoJo's Bizarre Adventure",
+    "art": "https://media.kitsu.app/anime/7158/poster_image/large-9e79f5c290ae821d2141473e6fdb6532.jpeg"
+  },
+  "80179842": {
+    "title": "JoJo's Bizarre Adventure",
+    "art": "https://media.kitsu.app/anime/7158/poster_image/large-9e79f5c290ae821d2141473e6fdb6532.jpeg"
+  },
+  "70196252": {
+    "title": "Breaking Bad",
+    "art": "https://xl.movieposterdb.com/13_07/2008/903747/xl_903747_ee4d54ed.jpg?v=2"
+  },
+  "70196255": {
+    "title": "Breaking Bad",
+    "art": "https://xl.movieposterdb.com/13_07/2008/903747/xl_903747_ee4d54ed.jpg?v=2"
+  },
+  "80179843": {
+    "title": "JoJo's Bizarre Adventure",
+    "art": "https://media.kitsu.app/anime/7158/poster_image/large-9e79f5c290ae821d2141473e6fdb6532.jpeg"
+  }
+}

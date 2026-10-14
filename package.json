@@ -1,0 +1,8 @@
+{
+  "name": "discord-listening",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@xhayper/discord-rpc": "^1.2.0"
+  }
+}

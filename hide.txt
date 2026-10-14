@@ -1,0 +1,5 @@
+# players to hide from your presence, one name per line
+# find names with: playerctl -l
+# (this file is re-read every tick — edits apply within seconds, no restart needed)
+# plasma-browser-integration
+# firefoxspotify
